@@ -1,0 +1,6 @@
+{
+  "name": "素言 · 极简拟真通讯录",
+  "description": "黑白灰极简美学的单人拟真手机主屏幕与字卡对话系统",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
