@@ -423,3 +423,57 @@ export function deduplicateCards(cards: WordCard[]): { uniqueCards: WordCard[]; 
 
   return { uniqueCards, removedCount };
 }
+
+// Check if an avatar string is an image URL / base64 data URL
+export function isAvatarImage(str?: string): boolean {
+  if (!str) return false;
+  return (
+    str.startsWith('data:image/') ||
+    str.startsWith('http://') ||
+    str.startsWith('https://') ||
+    str.startsWith('/assets/') ||
+    str.startsWith('blob:')
+  );
+}
+
+// Compress / resize avatar or image file to compact data URL
+export function resizeImageFile(file: File, maxDim = 256, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) {
+        reject(new Error('无法读取文件'));
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(result);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(result);
+      img.src = result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}

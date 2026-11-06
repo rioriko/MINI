@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AppFullState, Message, QuotedMessage, WordCard } from '../types';
 import { playMessageSound, sendWebNotification } from '../utils/sound';
+import { isAvatarImage } from '../utils/storage';
 
 interface ChatAppProps {
   state: AppFullState;
@@ -416,13 +417,19 @@ export const ChatApp: React.FC<ChatAppProps> = ({
                   {/* Optional Avatar */}
                   {state.appearance.showAvatar && (
                     <div
-                      className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-serif select-none ${
+                      className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-serif select-none overflow-hidden ${
                         isUser
                           ? 'bg-stone-800 text-stone-100 dark:bg-stone-200 dark:text-stone-900'
                           : 'bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700'
                       }`}
                     >
-                      {isUser ? '我' : (msg.senderAvatar || '彼').slice(0, 1)}
+                      {isUser ? (
+                        '我'
+                      ) : isAvatarImage(msg.senderAvatar) ? (
+                        <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        (msg.senderAvatar || '彼').slice(0, 1)
+                      )}
                     </div>
                   )}
 

@@ -24,8 +24,10 @@ import {
   X,
   Sparkles,
   Mic,
+  Upload,
 } from 'lucide-react';
 import { ActiveApp, AppearanceConfig, AppFullState, GroupConfig } from '../types';
+import { isAvatarImage, resizeImageFile } from '../utils/storage';
 
 interface HomeScreenProps {
   state: AppFullState;
@@ -66,13 +68,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Desktop arrangement mode (reordering apps)
   const [isArranging, setIsArranging] = useState(false);
 
-  // Quick edit profile modal (name, bio, quote)
+  // Quick edit profile modal (name, bio, quote, avatar)
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editName, setEditName] = useState(state.group.partnerName || '未定义');
+  const [editAvatar, setEditAvatar] = useState(state.group.partnerAvatar || '');
   const [editBio, setEditBio] = useState(state.appearance.customBio || '见素抱朴 · 岁岁平安');
   const [editQuote, setEditQuote] = useState(
     state.appearance.customQuote || '言之所至，心之所安。在寂静处，与你对话。'
   );
+
+  useEffect(() => {
+    setEditName(state.group.partnerName || '未定义');
+    setEditAvatar(state.group.partnerAvatar || '');
+    setEditBio(state.appearance.customBio || '见素抱朴 · 岁岁平安');
+    setEditQuote(state.appearance.customQuote || '言之所至，心之所安。在寂静处，与你对话。');
+  }, [state.group.partnerName, state.group.partnerAvatar, state.appearance.customBio, state.appearance.customQuote]);
+
+  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImageFile(file, 256, 0.85);
+      setEditAvatar(dataUrl);
+    } catch {
+      // ignore
+    }
+  };
 
   // Search popover in dashboard mode
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,6 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     onUpdateGroup({
       ...state.group,
       partnerName: editName.trim() || '未定义',
+      partnerAvatar: editAvatar.trim() || editName.slice(0, 1) || '素',
     });
     onUpdateAppearance({
       ...state.appearance,
@@ -261,14 +283,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="relative -mt-12 flex justify-center">
               <div
                 onClick={() => setShowEditProfileModal(true)}
-                className="w-20 h-20 rounded-full border-4 border-stone-100 dark:border-stone-950 bg-stone-950 dark:bg-stone-100 text-stone-100 dark:text-stone-900 shadow-lg flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-                title="轻触修改名号与介绍"
+                className="w-20 h-20 rounded-full border-4 border-stone-100 dark:border-stone-950 bg-stone-950 dark:bg-stone-100 text-stone-100 dark:text-stone-900 shadow-lg flex items-center justify-center cursor-pointer hover:scale-105 transition-transform overflow-hidden relative group"
+                title="轻触修改头像、名号与介绍"
               >
-                <span className="text-xl font-serif font-medium">
-                  {state.group.partnerAvatar.trim() ||
-                    state.group.partnerName.slice(0, 1) ||
-                    '素'}
-                </span>
+                {isAvatarImage(state.group.partnerAvatar) ? (
+                  <img
+                    src={state.group.partnerAvatar}
+                    alt={state.group.partnerName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xl font-serif font-medium">
+                    {state.group.partnerAvatar.trim() ||
+                      state.group.partnerName.slice(0, 1) ||
+                      '素'}
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-serif">
+                  更换头像
+                </div>
               </div>
             </div>
 
@@ -329,8 +362,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="space-y-2.5">
                 {/* Bot message bubble snippet */}
                 <div className="flex items-start gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center text-[10px] font-serif shrink-0">
-                    {state.group.partnerAvatar.trim().slice(0, 1) || '彼'}
+                  <div className="w-5 h-5 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center text-[10px] font-serif shrink-0 overflow-hidden">
+                    {isAvatarImage(state.group.partnerAvatar) ? (
+                      <img src={state.group.partnerAvatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      state.group.partnerAvatar.trim().slice(0, 1) || '彼'
+                    )}
                   </div>
                   <div className="px-2.5 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-[11px] font-serif text-stone-800 dark:text-stone-200 line-clamp-2">
                     {latestBotMsg?.text || '言止于意，心会于微。'}
@@ -418,8 +455,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             className="w-full h-11 px-3.5 rounded-2xl bg-stone-200/70 dark:bg-stone-900 border border-stone-300/70 dark:border-stone-800 flex items-center justify-between cursor-pointer hover:bg-stone-300/60 dark:hover:bg-stone-800/80 transition-colors mb-4"
           >
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center text-[10px] font-serif">
-                {state.group.partnerAvatar.trim().slice(0, 1) || '素'}
+              <div className="w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center text-[10px] font-serif overflow-hidden">
+                {isAvatarImage(state.group.partnerAvatar) ? (
+                  <img src={state.group.partnerAvatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  state.group.partnerAvatar.trim().slice(0, 1) || '素'
+                )}
               </div>
               <span className="text-xs font-serif text-stone-600 dark:text-stone-300">
                 轻触即发 · 触发对谈
@@ -572,13 +613,59 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             className="w-full max-w-sm bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150"
           >
             <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
-              <span className="text-sm font-serif font-medium">定制看板名号与署名</span>
+              <span className="text-sm font-serif font-medium">定制看板头像与署名</span>
               <button
                 onClick={() => setShowEditProfileModal(false)}
                 className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Avatar Upload and Preview */}
+            <div className="flex flex-col items-center gap-2 py-1.5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl p-3 border border-stone-200/80 dark:border-stone-700/60">
+              <div className="relative w-16 h-16 rounded-full border-2 border-stone-200 dark:border-stone-700 bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center overflow-hidden shadow-xs">
+                {isAvatarImage(editAvatar) ? (
+                  <img src={editAvatar} alt="头像预览" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl font-serif font-medium">
+                    {editAvatar.trim() || editName.slice(0, 1) || '素'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer px-3 py-1 rounded-lg bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 hover:opacity-90 text-[11px] font-serif flex items-center gap-1.5 transition-opacity shadow-2xs">
+                  <Upload className="w-3 h-3" />
+                  <span>上传头像图片</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                {isAvatarImage(editAvatar) ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditAvatar('')}
+                    className="px-2 py-1 text-[11px] font-serif text-stone-400 hover:text-red-500 transition-colors"
+                  >
+                    清除图片
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-serif text-stone-400">单字:</span>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={editAvatar}
+                      onChange={(e) => setEditAvatar(e.target.value)}
+                      placeholder={editName.slice(0, 1) || '素'}
+                      className="w-8 h-6 text-center text-xs font-serif bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
